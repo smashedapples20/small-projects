@@ -308,7 +308,7 @@ function Start-Sleep {
                 Write-Host "Sleeping until $([DateTime]::Now.AddMinutes($Minutes))"
             }
             $wrappedCmd = $ExecutionContext.InvokeCommand.GetCommand('Microsoft.PowerShell.Utility\Start-Sleep', [System.Management.Automation.CommandTypes]::Cmdlet)
-            $scriptCmd = {& $wrappedCmd @PSBoundParameters }
+            $scriptCmd = { & $wrappedCmd @PSBoundParameters }
             $steppablePipeline = $scriptCmd.GetSteppablePipeline($myInvocation.CommandOrigin)
             $steppablePipeline.Begin($PSCmdlet)
         }
@@ -340,4 +340,77 @@ function Start-Sleep {
 .ForwardHelpCategory Cmdlet
 
 #>
+}
+
+function Enter-VirtualEnvironment {
+    [Alias("venv")]
+    param (
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]
+        $VirtualEnvironmentName = ".venv",
+        [Parameter(Mandatory = $false)]
+        [Alias("create", "n")]
+        [switch]
+        $EnsureEnvironmentExists,
+        [Parameter(Mandatory = $false)]
+        [alias("update", "u", "install")]
+        [switch]
+        $InstallPackages
+    )
+
+    $venvExists = $false
+
+    if (-not ($VirtualEnvironmentName -like "*.venv")) {
+        $VirtualEnvironmentName += ".venv"
+    }
+
+    if ((Test-Path "./$VirtualEnvironmentName/") -and (Test-Path "./$VirtualEnvironmentName/Scripts/activate")) {
+        $venvExists = $true
+    }
+    elseif ($EnsureEnvironmentExists) {
+        & py -m venv "$VirtualEnvironmentName"
+    }
+    
+    if ($venvExists -or $EnsureEnvironmentExists) {
+        & ./$VirtualEnvironmentName/Scripts/activate
+
+        if ($InstallPackages) {
+            & pip install -r requirements.txt
+        }
+    }
+    else {
+        Write-Output "Path for '$VirtualEnvironmentName' not found."
+    }
+}
+
+function Remove-VirtualEnvironment {
+    [Alias("rmvenv")]
+    param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]
+        $VirtualEnvironmentName
+    )
+
+    if (-not $VirtualEnvironmentName) {
+        Write-Output "No virtual environment name provided."
+    }
+    else {
+        if (-not ($VirtualEnvironmentName -like "*.venv")) {
+            $VirtualEnvironmentName += ".venv"
+        }
+        
+        if ($env:VIRTUAL_ENV -like "*$VirtualEnvironmentName") {
+            & deactivate
+        }
+
+        Remove-Item -Path $VirtualEnvironmentName -Recurse
+    }
+}
+
+function Get-VirtualEnvironments {
+    [Alias("lsvenv")]
+    param ()
+
+    $envs = Get-ChildItem -filter "*.venv"
+    Write-Output $envs.Name
 }
