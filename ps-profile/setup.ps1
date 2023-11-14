@@ -1,4 +1,9 @@
-if (-not (Test-Path $PROFILE.CurrentUserAllHosts)) {
+param (
+    [Alias("f")]
+    [switch]$ForceOverwrite
+)
+
+if ($ForceOverwrite -or -not (Test-Path $PROFILE.CurrentUserAllHosts)) {
     New-Item -ItemType File -Path $PROFILE.CurrentUserAllHosts -Verbose -Force
 }
 Copy-Item -Path $PSScriptRoot\profile.ps1 -Destination $PROFILE.CurrentUserAllHosts -Verbose -Force
